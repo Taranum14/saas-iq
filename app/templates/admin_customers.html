@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Records · SaaS-IQ{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Customer records</h1>
+    <p class="lede">Admins can delete a customer. Each deletion is written to the audit log below.</p>
+  </div>
+</div>
+
+<section class="section" style="margin-top:32px">
+  <div class="table-wrap"><table>
+    <thead><tr><th>ID</th><th class="l">Company</th><th class="l">Channel</th><th class="l">Trial started</th><th class="l">Plan</th><th class="l">Status</th><th></th></tr></thead>
+    <tbody>
+    {% for c in pagination.items %}
+    <tr><td>{{ c.id }}</td><td class="l">{{ c.company }}</td><td class="l">{{ c.channel }}</td><td class="l">{{ c.trial_start }}</td>
+        <td class="l">{{ c.plan or '—' }}</td>
+        <td class="l">{% if not c.converted_on %}Trial only{% elif c.churned_on %}Cancelled{% else %}Paying{% endif %}</td>
+        <td><form method="post" action="{{ url_for('main.delete_customer', cid=c.id) }}"
+                  onsubmit="return confirm('Delete {{ c.company|e }}? This also removes their payment history.')"><button class="quiet">Delete</button></form></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <p class="note">Page {{ pagination.page }} of {{ pagination.pages }}
+    {% if pagination.has_prev %} <a href="?page={{ pagination.prev_num }}">Previous</a>{% endif %}
+    {% if pagination.has_next %} <a href="?page={{ pagination.next_num }}">Next</a>{% endif %}</p>
+</section>
+
+<section class="section">
+  <header><h2>Audit log</h2><p class="lede">The ten most recent changes.</p></header>
+  <div class="table-wrap"><table>
+    <thead><tr><th class="l">When (UTC)</th><th class="l">User</th><th class="l">Action</th><th class="l">Detail</th></tr></thead>
+    <tbody>{% for l in logs %}<tr><td class="l">{{ l.at.strftime('%d %b %Y, %H:%M') }}</td><td class="l">{{ l.username }}</td><td class="l">{{ l.action }}</td><td class="l">{{ l.detail }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

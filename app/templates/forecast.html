@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chart, plotly_script %}
+{% block title %}Forecast · SaaS-IQ{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Where MRR is heading over the next six months</h1>
+    <p class="lede">Starting from today's {{ current|inr_short }}. The shaded band is the likely range, taken from 1,000 simulated futures.</p>
+  </div>
+</div>
+
+<section class="section" style="margin-top:36px">
+  {{ chart("forecast", fig_forecast, 380, "Line chart of past MRR and a six month forecast with a likely range") }}
+  <div class="table-wrap" style="margin-top:20px"><table>
+    <thead><tr><th>Month</th><th>Forecast</th><th>Low end (P10)</th><th>High end (P90)</th></tr></thead>
+    <tbody>{% for r in fc %}<tr><td>{{ r.month.strftime('%B %Y') }}</td><td><b>{{ r.forecast|inr }}</b></td><td>{{ r.p10|inr }}</td><td>{{ r.p90|inr }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="note"><b>How it works:</b> next month's MRR is this month's MRR times the share of revenue kept, plus the MRR from new customers. Revenue kept is the six-month average. New MRR follows a 12-month straight-line trend. Because the two pieces are separate, the model can answer "what if churn improves?", which a single straight line through past MRR cannot.</p>
+</section>
+
+<section class="section split even">
+  <div>
+    <header style="margin-bottom:22px"><h2>How far off has it been?</h2>
+      <p class="lede">The forecast was re-run from {{ n_origins }} past starting points and compared with what actually happened. Lower is better.</p></header>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Method</th><th>Average error</th></tr></thead>
+      <tbody>{% for r in summary %}<tr><td>{{ r.method }}</td><td class="{{ 'good' if loop.first }}">{{ "%.1f"|format(r.mape) }}%</td></tr>{% endfor %}</tbody>
+    </table></div>
+    <p class="note"><b>Read this carefully:</b> both model-based methods beat the naive "stay flat" guess by a wide margin. The gap between the top two is small and rests on only {{ n_origins }} overlapping test windows, so call them roughly tied. The trend window was picked using this same backtest, which flatters the result a little.</p>
+  </div>
+  <div>
+    <header style="margin-bottom:22px"><h2>Error grows with distance</h2>
+      <p class="lede">Average error by how many months ahead.</p></header>
+    {{ chart("backtest", fig_backtest, 300, "Grouped bar chart of forecast error by months ahead and method") }}
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}{{ plotly_script() }}{% endblock %}

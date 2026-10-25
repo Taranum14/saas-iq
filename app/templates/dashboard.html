@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chart, plotly_script, key %}
+{% block title %}Overview · SaaS-IQ{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <p class="lead">{% for text, is_fig in lead %}{% if is_fig %}<b>{{ text }}</b>{% else %}{{ text }}{% endif %}{% endfor %}</p>
+  <form method="get" class="picker">
+    <label for="month">Month shown</label>
+    <select id="month" name="month" onchange="this.form.submit()">
+      {% for value, label in month_options|reverse %}<option value="{{ value }}" {{ 'selected' if value == selected }}>{{ label }}</option>{% endfor %}
+    </select>
+  </form>
+</div>
+
+<section class="section" style="margin-top:48px">
+  <header>
+    <h2>How MRR moved in {{ month_name }}</h2>
+    <p class="lede">Starting from last month's closing revenue, what was added and what was lost.</p>
+  </header>
+  <div class="rows">
+    <div class="row head">
+      <span></span>
+      <div class="track"><span class="zero-label" style="left:{{ bridge.zero }}%">Opening level</span></div>
+      <span></span>
+    </div>
+    <div class="row total">
+      <span class="name">Opening MRR</span>
+      <div class="track"><span class="zero" style="left:{{ bridge.zero }}%"></span></div>
+      <span class="amount">{{ bridge.opening|inr }}</span>
+    </div>
+    {% for r in bridge.rows %}
+    <div class="row">
+      <span class="name">{{ r.label }}{% if r.note %}<small>{{ r.note }}</small>{% endif %}</span>
+      <div class="track">
+        <span class="zero" style="left:{{ bridge.zero }}%"></span>
+        <span class="bar-mark {{ 'loss' if r.kind == 'loss' }}" style="left:{{ r.left }}%; width:{{ r.width }}%; --i:{{ loop.index0 }}"
+              title="{{ r.label }}: {{ r.value|inr(signed=True) }}"></span>
+      </div>
+      <span class="amount">{{ r.value|inr(signed=True) }}</span>
+    </div>
+    {% endfor %}
+    <div class="row total">
+      <span class="name">Closing MRR<small>net change <span style="white-space:nowrap">{{ bridge.net|inr(signed=True) }}</span></small></span>
+      <div class="track">
+        <span class="zero" style="left:{{ bridge.zero }}%"></span>
+        <span class="bar-mark fill {{ 'loss' if bridge.net_kind == 'loss' }}" style="left:{{ bridge.net_left }}%; width:{{ bridge.net_width }}%; --i:4"
+              title="Net change {{ bridge.net|inr(signed=True) }}"></span>
+      </div>
+      <span class="amount">{{ bridge.closing|inr }}</span>
+    </div>
+  </div>
+  <p class="note">Bars show change from the opening figure, not total revenue. The month's movements are small next to the revenue base, so a zero-based chart would hide them.</p>
+</section>
+
+<div class="figures">
+  <div class="figure"><span class="v">{{ k.arr|inr_short }}</span><span class="l">Annual run rate</span><span class="s">MRR times 12</span></div>
+  <div class="figure"><span class="v">{{ k.customers|num }}</span><span class="l">Paying customers</span><span class="s">{{ k.arpa|inr }} each on average</span></div>
+  <div class="figure"><span class="v">{{ k.logo_churn|pct }}</span><span class="l">Customers lost this month</span></div>
+  <div class="figure"><span class="v">{{ k.nrr|pct }}</span><span class="l">Revenue kept from last month</span><span class="s">after upgrades and downgrades</span></div>
+  <div class="figure"><span class="v">{{ k.mom_growth|signed_pct }}</span><span class="l">MRR growth</span><span class="s">against the month before</span></div>
+</div>
+
+<section class="section">
+  <header>
+    <h2>Recurring revenue, month by month</h2>
+    <p class="lede">The line is closing MRR. The bars underneath show what was gained and lost to get there each month.</p>
+  </header>
+  {{ chart("history", fig_history, 420, "Line chart of monthly recurring revenue with bars for gains and losses") }}
+  <details class="twin">
+    <summary>Show as a table</summary>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Month</th><th>Closing MRR</th><th>Gained</th><th>Lost</th></tr></thead>
+      <tbody>{% for r in history_rows %}<tr><td>{{ r.month }}</td><td>{{ r.closing|inr }}</td><td>{{ r.gained|inr }}</td><td>{{ r.lost|inr }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </details>
+</section>
+
+<section class="section split">
+  <div>
+    <header style="margin-bottom:22px">
+      <h2>Where free trials end up</h2>
+      <p class="lede">Of everyone who ever started a trial.</p>
+    </header>
+    <div>
+      {% for f in funnel %}
+      <div class="fstep">
+        <div class="top"><span>{{ f.label }}</span><span>{{ f.count|num }}</span></div>
+        <div class="fbar"><span class="bar-mark fill" style="left:0; width:{{ f.width }}%; --i:{{ loop.index0 }}"></span></div>
+        <small>{{ f.note or "Everyone who started a trial" }}</small>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div>
+    <header style="margin-bottom:22px">
+      <h2>Which channels earn their cost back</h2>
+      <p class="lede">Lifetime value divided by what it cost to win the customer. Under 3× is thin.</p>
+    </header>
+    {{ chart("ltv", fig_ltv, 300, "Bar chart of lifetime value to acquisition cost by channel") }}
+  </div>
+</section>
+
+<section class="section">
+  <header>
+    <h2>Do customers stay?</h2>
+    <p class="lede">Each row is the group of customers who started paying in that month. Darker means more of them are still paying.</p>
+  </header>
+  {{ chart("cohort", fig_cohort, 560, "Heatmap of the share of each starting cohort still paying, by months since start") }}
+</section>
+
+<section class="section">
+  <header>
+    <h2>Channel scorecard</h2>
+    <p class="lede">What each source costs, how well it converts, and how long its customers stay.</p>
+  </header>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Channel</th><th>Trials</th><th>Became paying</th><th>Cost to win</th><th>Revenue per customer</th><th>Lost per month</th><th>Lifetime value</th><th>LTV:CAC</th><th>Months to pay back</th><th class="l">Verdict</th></tr></thead>
+    <tbody>
+    {% for r in channel_table %}
+    <tr><td>{{ key(r.color) }}{{ r.channel }}</td><td>{{ r.trials|num }}</td><td>{{ r.conversion|pct }}</td>
+        <td>{{ r.cac|inr }}</td><td>{{ r.arpa|inr }}</td><td>{{ r.churn|pct }}</td>
+        <td>{{ r.ltv|inr }}</td><td><b>{{ r.ltv_cac|times }}</b></td><td>{{ "%.1f"|format(r.payback_months) }}</td>
+        <td class="l verdict {{ 'bad' if r.ltv_cac < 1 }}">{{ r.verdict }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <p class="note"><b>How lifetime value is worked out:</b> revenue per customer times {{ margin_pct }}% margin times the months a customer is expected to stay over the next 24 months, read from the survival curve for that channel.</p>
+</section>
+{% endblock %}
+{% block scripts %}{{ plotly_script() }}{% endblock %}

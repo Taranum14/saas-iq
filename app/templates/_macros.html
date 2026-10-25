@@ -1,0 +1,11 @@
+{# One chart: an empty div plus its figure, queued for static/app.js to draw. #}
+{% macro chart(id, fig, height=320, label="") %}
+<div id="{{ id }}" class="chart" style="height:{{ height }}px" role="img" aria-label="{{ label }}"></div>
+<script>(window.CHARTS = window.CHARTS || []).push([{{ id|tojson }}, {{ fig|tojson }}]);</script>
+{% endmacro %}
+
+{# Chart library, loaded from the installed plotly package so the app works offline. #}
+{% macro plotly_script() %}<script src="{{ url_for('main.plotly_js') }}"></script>{% endmacro %}
+
+{# A single labelled bar row, shared by the revenue bridge and the trial funnel. #}
+{% macro key(color) %}<span class="key" style="background:var({{ color }})" aria-hidden="true"></span>{% endmacro %}

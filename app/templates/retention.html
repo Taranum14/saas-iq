@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chart, plotly_script %}
+{% block title %}Who to call · SaaS-IQ{% endblock %}
+{% block content %}
+{% if not ready %}
+<div class="empty">
+  <h1>The churn model has not been trained yet</h1>
+  <p>Run <code>python -m app.ml.train</code>, or <code>python -m data.seed_data</code> to rebuild everything, then reload this page.</p>
+</div>
+{% else %}
+
+<div class="page-head">
+  <div>
+    <h1>Who should we call this week?</h1>
+    <p class="lede">The model estimates each paying customer's chance of cancelling next month. A call costs money, so customers are ranked by what a call is worth: chance of leaving, times chance we keep them, times the margin we keep, minus the cost of the call.</p>
+  </div>
+</div>
+
+<form method="get" class="assume" style="margin-top:32px">
+  <label>Share of customers a call keeps (%)<input name="save_rate" type="number" min="1" max="100" value="{{ form.save_rate }}"></label>
+  <label>Cost of one call (₹)<input name="cost" type="number" min="0" value="{{ form.cost }}"></label>
+  <label>Months a kept customer stays<input name="months_kept" type="number" min="1" max="36" value="{{ form.months_kept }}"></label>
+  <label>Budget cap (₹, optional)<input name="budget" type="number" min="0" value="{{ form.budget }}"></label>
+  <button type="submit">Update the list</button>
+</form>
+<p class="note">These four numbers are assumptions, not measurements. A real team would learn them from an A/B test: call a random half of the at-risk customers and compare. Change them to see how the plan shifts.</p>
+
+<div class="figures">
+  <div class="figure"><span class="v">{{ s.targeted|num }}</span><span class="l">Customers to call</span><span class="s">out of {{ s.active|num }} paying</span></div>
+  <div class="figure"><span class="v">{{ s.spend|inr_short }}</span><span class="l">Cost of the calls</span></div>
+  <div class="figure"><span class="v">{{ s.expected_saved_margin|inr_short }}</span><span class="l">Margin expected to be kept</span></div>
+  <div class="figure"><span class="v {{ 'bad' if s.net_value <= 0 }}">{{ s.net_value|inr_short }}</span><span class="l">Net value</span><span class="s">a return of {{ s.roi|pct(0) }} on the spend</span></div>
+  <div class="figure"><span class="v">{{ s.vs_random|times }}</span><span class="l">Better than calling at random</span><span class="s">same number of calls</span></div>
+</div>
+
+<section class="section">
+  <header>
+    <h2>The call list</h2>
+    <p class="lede">Most valuable calls first.{% if n_calls > 50 %} Showing the top 50 of {{ n_calls }}.{% endif %} The last column lists what pushes each customer's risk above a typical customer's.</p>
+  </header>
+  {% if calls %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Rank</th><th class="l">Company</th><th class="l">Plan</th><th class="l">Channel</th><th>MRR</th><th>Chance of leaving</th><th>Value of the call</th><th class="l">Why they are at risk</th></tr></thead>
+    <tbody>
+    {% for c in calls %}
+    <tr><td>{{ loop.index }}</td><td class="l">{{ c.company }}</td><td class="l">{{ c.plan }}</td><td class="l">{{ c.channel }}</td>
+        <td>{{ c.mrr|inr }}</td><td><b>{{ c.probability|pct(0) }}</b></td><td>{{ c.net_value|inr }}</td>
+        <td class="why">{{ c.reasons }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="lede">With these assumptions, no call is worth its cost. Lower the cost of a call or raise the share it keeps.</p>
+  {% endif %}
+</section>
+
+<section class="section">
+  <header>
+    <h2>Can the model be trusted?</h2>
+    <p class="lede">{{ m.selected_model }}, tested on {{ sel.n|num }} customer-months from {{ m.windows.test[0] }} to {{ m.windows.test[1] }}, which include {{ sel.churners }} customers who really left. The model never saw these months during training or selection.</p>
+  </header>
+  <div class="figures" style="margin-top:0">
+    <div class="figure"><span class="v">{{ "%.2f"|format(sel.pr_auc) }}</span><span class="l">Precision-recall score</span><span class="s">guessing would score {{ "%.2f"|format(sel.base_rate) }}</span></div>
+    <div class="figure"><span class="v">{{ "%.2f"|format(sel.roc_auc) }}</span><span class="l">ROC-AUC</span><span class="s">0.5 is a coin flip</span></div>
+    <div class="figure"><span class="v">{{ sel.top_decile_lift|times }}</span><span class="l">Riskiest tenth churns this much more than average</span></div>
+    <div class="figure"><span class="v">{{ sel.top_decile_capture|pct(0) }}</span><span class="l">Of all leavers sit in the riskiest tenth</span></div>
+    <div class="figure"><span class="v">{{ "%.3f"|format(sel.brier) }}</span><span class="l">Brier score</span><span class="s">no-skill guess {{ "%.3f"|format(sel.brier_baseline) }}</span></div>
+  </div>
+</section>
+
+<section class="section split even">
+  <div>
+    <header style="margin-bottom:22px"><h2>Does higher risk mean more churn?</h2>
+      <p class="lede">Real churn in each tenth of customers, from riskiest to safest, on the held-out months.</p></header>
+    {{ chart("deciles", fig_deciles, 300, "Bar chart of actual churn rate by predicted risk group") }}
+  </div>
+  <div>
+    <header style="margin-bottom:22px"><h2>What drives churn?</h2>
+      <p class="lede">How much the model gets worse when one signal is scrambled.</p></header>
+    {{ chart("importance", fig_importance, 300, "Bar chart of how much each feature matters to the churn model") }}
+  </div>
+</section>
+<p class="note">The model was chosen on validation precision-recall ({% for k, v in m.validation_pr_auc.items() %}{{ k }} {{ "%.2f"|format(v) }}{{ ", " if not loop.last }}{% endfor %}). It uses only information available at month-end, and the train and test periods are separated by a gap of one month. About 30% of leavers in this data show no warning signs at all, which limits how accurate any model can be.</p>
+{% endif %}
+{% endblock %}
+{% block scripts %}{% if ready %}{{ plotly_script() }}{% endif %}{% endblock %}

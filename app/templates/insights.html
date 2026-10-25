@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chart, plotly_script, key %}
+{% block title %}Customer lifetimes · SaaS-IQ{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>How long customers stay, and when something goes wrong</h1>
+    <p class="lede">Survival curves show the share of customers still paying after a given number of months. Customers who are still active are counted correctly, so lifetimes are not understated.</p>
+  </div>
+</div>
+
+<section class="section split even" style="margin-top:36px">
+  <div>
+    {{ chart("surv", fig_surv, 340, "Line chart of the share of customers still paying by months since start, one line per channel") }}
+  </div>
+  <div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Channel</th><th>Customers</th><th>Left</th><th>Paying at 6 months</th><th>Paying at 12 months</th><th>Median stay</th></tr></thead>
+      <tbody>
+      {% for r in surv_rows %}
+      <tr><td>{{ key(r.color) }}{{ r.channel }}</td><td>{{ r.customers|num }}</td><td>{{ r.churned|num }}</td>
+          <td>{{ r.s6|pct(0) }}</td><td><b>{{ r.s12|pct(0) }}</b></td>
+          <td>{{ "%.0f months"|format(r.median) if r.median == r.median else "Not reached" }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    <p class="note">Median stay appears only when half of a channel's customers have already left within the data window.</p>
+  </div>
+</section>
+
+<section class="section">
+  <header>
+    <h2>Months that were worse than chance</h2>
+    <p class="lede">Each month's churn is compared with the recent rate, allowing for how many customers were at risk. Diamonds mark months too bad to be luck.</p>
+  </header>
+  {{ chart("anom", fig_anom, 300, "Line chart of the monthly share of customers lost, with unusual months marked") }}
+</section>
+
+{% if rca %}
+<section class="section">
+  <header>
+    <h2>What caused them</h2>
+    <p class="lede">For each flagged month, the channel that explains the extra losses.</p>
+  </header>
+  {% for e in rca %}
+  {% set top = e.rows[0] %}
+  <h3 style="margin-top:{{ 0 if loop.first else 40 }}px">{{ e.month.strftime('%B %Y') }}: {{ e.rate|pct }} of customers left</h3>
+  <p class="lede" style="margin-bottom:14px">{{ top.channel }} explains <b>{{ top.share_of_excess|pct(0) }}</b> of the extra losses. {{ top.rate|pct(0) }} of its customers left, against a usual {{ top.normal_rate|pct(0) }}.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Channel</th><th>Customers at start</th><th>Left</th><th>Churn rate</th><th>Usual rate</th><th>Extra lost</th><th>Share of the extra</th></tr></thead>
+    <tbody>
+    {% for r in e.rows %}
+    <tr><td>{{ key(r.color) }}{{ r.channel }}</td><td>{{ r.opening|num }}</td><td>{{ r.churned|num }}</td><td>{{ r.rate|pct }}</td>
+        <td>{{ r.normal_rate|pct }}</td><td>{{ "%+.1f"|format(r.excess_churned)|replace("-", "−") }}</td><td>{{ r.share_of_excess|pct(0) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% endfor %}
+  <p class="note">In this demo data the spike is an <b>injected</b> billing incident on one channel, so the detector can be checked against a known answer. The unit tests confirm that it is found, blamed on the right channel, and that no false alarms are raised.</p>
+</section>
+{% else %}
+<section class="section"><h2>No unusual months</h2><p class="lede">Nothing crossed the alert threshold.</p></section>
+{% endif %}
+
+{% if other_flags %}
+<section class="section">
+  <header><h2>Other alerts</h2></header>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Month</th><th class="l">Metric</th><th>Value</th><th>Distance from normal (z)</th></tr></thead>
+    <tbody>{% for f in other_flags %}<tr><td>{{ f.month.strftime('%B %Y') }}</td><td class="l">{{ f.metric }}</td><td>{{ f.value|inr }}</td><td>{{ "%.1f"|format(f.z) }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}{{ plotly_script() }}{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}No access · SaaS-IQ{% endblock %}
+{% block content %}
+<div class="empty">
+  <h1>Your role can't open this page</h1>
+  <p>This page is for a different role. If you need it, ask an admin to change your role.</p>
+  <p><a href="{{ url_for('main.dashboard') }}">Back to the overview</a></p>
+</div>
+{% endblock %}
