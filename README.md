@@ -82,6 +82,4 @@ docs/             screenshots used in this README
 - Forecast error grows with distance, and the range reflects simulated noise, not every real-world risk.
 - Not yet built: CSV upload, Docker, deployment.
 
-## About
 
-Built with AI assistance (Claude). Fonts: IBM Plex Sans and Bricolage Grotesque (SIL Open Font License). Charts: Plotly (MIT).
