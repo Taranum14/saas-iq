@@ -26,6 +26,25 @@ A revenue manager looks at one number, "MRR is ₹26 lakh", and cannot tell what
 | Who should be called? | With the stated assumptions, 15 customers. Expected cost ₹7,500, expected margin kept about ₹16,900, roughly 17× better than calling 15 random customers. |
 | Where is MRR heading? | About ₹37.6 lakh by March 2027 (likely range ₹35.7 to ₹39.5 lakh). Average backtest error 5.6%, against 6.2% for a straight-line trend and 24.3% for a flat guess. |
 
+## Recommendations
+
+These follow from the demo data. With real data the same steps would be repeated and the numbers would change.
+
+1. **Move acquisition budget toward Referral and Organic.** They are the only channels near or above the 3× benchmark (3.0× and 3.6×), and they pay back their cost in about 5 to 6 months.
+2. **Fix or pause Google Ads.** At 0.9× it loses money, and 7.2% of its customers cancel each month, the highest of any channel. The one churn spike the alerts flagged (April 2026) was traced to it, with Google Ads responsible for 88% of the extra cancellations. Test cheaper targeting and better onboarding before spending more.
+3. **Challenge Outbound Sales and LinkedIn Ads.** At 1.1× and 1.0× they barely recover their cost, and payback takes about 17 to 18 months. Keep them only if targeting improves or they bring in larger plans.
+4. **Run a weekly retention call list, starting at the top.** At the stated assumptions, 15 customers are worth calling. In this data the strongest warning signs are falling logins and recent support tickets, so those are the two signals worth alerting on.
+5. **Measure the calls before scaling them.** The 30% save rate is an assumption. Call a random half of the at-risk customers, leave the other half alone, and compare.
+6. **Plan around about ₹37.6 lakh of MRR by March 2027, using the range.** Treat ₹35.7 to ₹39.5 lakh as the planning band and re-run the forecast every month, because error grows with distance.
+
+## Conclusion
+
+Revenue is growing, but the growth is not equally well bought. MRR rose 5.6% in September, and the existing customer base grew on its own (net revenue retention 100.4%), so cancellations are not outrunning upgrades. Only Referral and Organic earn their acquisition cost back comfortably. Google Ads, LinkedIn and Outbound barely recover their cost over 24 months, or lose money.
+
+Churn is predictable enough to act on: the riskiest tenth of customers holds 67% of all leavers, so a short, ranked call list reaches most of the avoidable loss. It will not catch everyone, because about 30% of leavers give no warning. The six-month forecast is dependable in the near term (5.6% average error against 24.3% for a flat guess) and less precise further out.
+
+Taken together, the app turns raw subscription records into four decisions: where to spend, whom to call, what to plan for, and what to investigate. These conclusions come from synthetic data built with these patterns, so the project demonstrates the method, not a discovery about a real market.
+
 ## Pages
 
 | Page | Who sees it | What it shows |
